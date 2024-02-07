@@ -89,31 +89,7 @@ impl<'a> CertRevocationList<'a> {
     ///
     /// In all other circumstances the CRL is not considered authoritative.
     pub(crate) fn authoritative(&self, path: &PathNode<'_>) -> bool {
-        // In all cases we require that the authoritative CRL have the same issuer
-        // as the certificate. Recall we do not support indirect CRLs.
-        if self.issuer() != path.cert.issuer() {
-            return false;
-        }
-
-        let crl_idp = match (
-            path.cert.crl_distribution_points(),
-            self.issuing_distribution_point(),
-        ) {
-            // If the certificate has no CRL distribution points, and the CRL has no issuing distribution point,
-            // then we can consider this CRL authoritative based on the issuer matching.
-            (cert_dps, None) => return cert_dps.is_none(),
-
-            // If the CRL has an issuing distribution point, parse it so we can consider its scope
-            // and compare against the cert CRL distribution points, if present.
-            (_, Some(crl_idp)) => {
-                match IssuingDistributionPoint::from_der(untrusted::Input::from(crl_idp)) {
-                    Ok(crl_idp) => crl_idp,
-                    Err(_) => return false, // Note: shouldn't happen - we verify IDP at CRL-load.
-                }
-            }
-        };
-
-        crl_idp.authoritative_for(path)
+        self.issuer() == path.cert.issuer()
     }
 
     /// Verify the CRL signature using the issuer certificate and a list of supported signature
